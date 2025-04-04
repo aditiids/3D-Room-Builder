@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced 3D Room Builder</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+            width: 320px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        button, select {
+            margin-right: 8px;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        input[type="color"] {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 2px solid #ddd;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+        
+        #status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .furniture-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .furniture-btn {
+            background-color: #2196F3;
+        }
+        
+        .furniture-btn:hover {
+            background-color: #0b7dda;
+        }
+        
+        #move-btn {
+            background-color: #ff9800;
+        }
+        
+        #move-btn:hover {
+            background-color: #e68a00;
+        }
+        
+        #remove-btn, #clear-all-btn {
+            background-color: #f44336;
+        }
+        
+        #remove-btn:hover, #clear-all-btn:hover {
+            background-color: #da190b;
+        }
+        
+        #furniture-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        
+        .furniture-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #f5f5f5;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .furniture-item:hover {
+            background: #e9e9e9;
+        }
+        
+        .furniture-item.selected {
+            background: #d4edda;
+            border-left: 3px solid #28a745;
+        }
+        
+        .furniture-item .item-name {
+            font-weight: bold;
+        }
+        
+        .furniture-item .item-type {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        #color-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        #color-select {
+            flex-grow: 1;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="ui">
+        <div class="control-group">
+            <h3>Room Settings</h3>
+            <div class="furniture-controls">
+                <button onclick="changeWallColor(0xE0E0E0)">Default Walls</button>
+                <input type="color" id="custom-color" onchange="customColorChange()" value="#e0e0e0">
+            </div>
+            <div style="margin-top: 8px;">
+                <button onclick="changeFloorColor(0x8B4513)">Wood Floor</button>
+                <button onclick="changeFloorColor(0x808080)">Stone Floor</button>
+                <button onclick="changeFloorColor(0x2c3e50)">Dark Floor</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>Add Furniture</h3>
+            <select id="furniture-select">
+                <option value="chair">Chair</option>
+                <option value="sofa">Sofa</option>
+                <option value="bed">Bed</option>
+                <option value="table">Table</option>
+                <option value="lamp">Lamp</option>
+                <option value="bookshelf">Bookshelf</option>
+                <option value="tv">TV Stand</option>
+            </select>
+            <button class="furniture-btn" onclick="placeFurniture()">Add</button>
+        </div>
+        
+        <div class="control-group">
+            <h3>Furniture List</h3>
+            <div id="furniture-list"></div>
+            <button id="clear-all-btn" onclick="clearAllFurniture()" style="width: 100%; margin-top: 8px;">Clear All Furniture</button>
+        </div>
+        
+        <div class="control-group">
+            <h3>Selected Furniture</h3>
+            <div id="selected-info" style="margin-bottom: 10px; font-style: italic;">No furniture selected</div>
+            <div class="furniture-controls">
+                <button id="move-btn" onclick="toggleMoveMode()">Enable Move Mode</button>
+                <button id="remove-btn" onclick="removeSelectedFurniture()">Remove</button>
+                <button onclick="rotateSelectedFurniture()">Rotate</button>
+            </div>
+            <div id="color-controls">
+                <select id="color-select" onchange="changeSelectedFurnitureColor(this.value)">
+                    <option value="0x4CAF50">Green</option>
+                    <option value="0x2196F3">Blue</option>
+                    <option value="0xf44336">Red</option>
+                    <option value="0x9E9E9E">Gray</option>
+                    <option value="0x795548">Brown</option>
+                    <option value="0x000000">Black</option>
+                    <option value="0xFFFFFF">White</option>
+                </select>
+                <input type="color" id="custom-furniture-color" onchange="customFurnitureColorChange()" value="#4CAF50">
+            </div>
+        </div>
+        
+        <div id="status">Welcome to 3D Room Builder! Add furniture to begin.</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(8, 8, 8);
+        
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('container').appendChild(renderer.domElement);
+        
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 3;
+        controls.maxDistance = 20;
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 20;
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        scene.add(directionalLight);
+        
+        // Add hemisphere light for more natural lighting
+        const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.3);
+        scene.add(hemisphereLight);
+        
+        // Room dimensions
+        const roomWidth = 12;
+        const roomHeight = 6;
+        const roomDepth = 10;
+        
+        // Materials
+        const wallMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xE0E0E0,
+            side: THREE.BackSide,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        
+        const floorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x8B4513,
+            roughness: 0.7,
+            metalness: 0.1
+        });
+        
+        // Room construction
+        const room = new THREE.Group();
+        room.name = "room";
+        
+        // Floor
+        const floor = new THREE.Mesh(
+            new THREE.BoxGeometry(roomWidth, 0.1, roomDepth),
+            floorMaterial
+        );
+        floor.position.y = -0.05;
+        floor.receiveShadow = true;
+        floor.name = "floor";
+        room.add(floor);
+        
+        // Walls
+        const backWall = new THREE.Mesh(
+            new THREE.BoxGeometry(roomWidth, roomHeight, 0.1),
+            wallMaterial.clone()
+        );
+        backWall.position.z = -roomDepth/2;
+        backWall.position.y = roomHeight/2;
+        backWall.receiveShadow = true;
+        backWall.name = "back-wall";
+        room.add(backWall);
+        
+        const leftWall = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, roomHeight, roomDepth),
+            wallMaterial.clone()
+        );
+        leftWall.position.x = -roomWidth/2;
+        leftWall.position.y = roomHeight/2;
+        leftWall.receiveShadow = true;
+        leftWall.name = "left-wall";
+        room.add(leftWall);
+        
+        const rightWall = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, roomHeight, roomDepth),
+            wallMaterial.clone()
+        );
+        rightWall.position.x = roomWidth/2;
+        rightWall.position.y = roomHeight/2;
+        rightWall.receiveShadow = true;
+        rightWall.name = "right-wall";
+        room.add(rightWall);
+        
+        scene.add(room);
+        
+        // Furniture variables
+        let furnitureItems = [];
+        let selectedFurnitureIndex = -1;
+        let moveMode = false;
+        let currentFurnitureColor = 0x4CAF50;
+        let furnitureCounter = 1;
+        
+        // Furniture creation functions
+        function createChair(color = currentFurnitureColor, id = 'chair-' + Date.now()) {
+            const chairGroup = new THREE.Group();
+            chairGroup.name = id;
+            
+            // Chair seat
+            const seatGeometry = new THREE.BoxGeometry(1, 0.2, 1);
+            const seatMaterial = new THREE.MeshStandardMaterial({ 
+                color: color,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+            seat.position.y = 0.5;
+            seat.castShadow = true;
+            seat.receiveShadow = true;
+            chairGroup.add(seat);
+            
+            // Chair back
+            const backGeometry = new THREE.BoxGeometry(1, 1, 0.1);
+            const back = new THREE.Mesh(backGeometry, seatMaterial);
+            back.position.y = 1;
+            back.position.z = -0.5;
+            back.castShadow = true;
+            chairGroup.add(back);
+            
+            // Chair legs
+            const legGeometry = new THREE.BoxGeometry(0.1, 0.5, 0.1);
+            const legMaterial = new THREE.MeshStandardMaterial({ 
+                color: darkenColor(color, 40),
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            
+            const legPositions = [
+                { x: 0.4, z: 0.4 },
+                { x: -0.4, z: 0.4 },
+                { x: 0.4, z: -0.4 },
+                { x: -0.4, z: -0.4 }
+            ];
+            
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(pos.x, 0.25, pos.z);
+                leg.castShadow = true;
+                chairGroup.add(leg);
+            });
+            
+            chairGroup.userData = {
+                type: 'chair',
+                color: color,
+                name: 'Chair ' + furnitureCounter++
+            };
+            
+            return chairGroup;
+        }
+        
+        function createSofa(color = currentFurnitureColor, id = 'sofa-' + Date.now()) {
+            const sofaGroup = new THREE.Group();
+            sofaGroup.name = id;
+            const sofaMaterial = new THREE.MeshStandardMaterial({ 
+                color: color,
+                roughness: 0.6,
+                metalness: 0.1
+            });
+            
+            // Sofa base
+            const baseGeometry = new THREE.BoxGeometry(2, 0.8, 1);
+            const base = new THREE.Mesh(baseGeometry, sofaMaterial);
+            base.position.y = 0.4;
+            base.castShadow = true;
+            base.receiveShadow = true;
+            sofaGroup.add(base);
+            
+            // Sofa back
+            const backGeometry = new THREE.BoxGeometry(2, 1, 0.2);
+            const back = new THREE.Mesh(backGeometry, sofaMaterial);
+            back.position.y = 1;
+            back.position.z = -0.5;
+            back.castShadow = true;
+            sofaGroup.add(back);
+            
+            // Sofa arms
+            const armGeometry = new THREE.BoxGeometry(0.3, 0.8, 1);
+            const leftArm = new THREE.Mesh(armGeometry, sofaMaterial);
+            leftArm.position.set(-1.15, 0.4, 0);
+            leftArm.castShadow = true;
+            sofaGroup.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeometry, sofaMaterial);
+            rightArm.position.set(1.15, 0.4, 0);
+            rightArm.castShadow = true;
+            sofaGroup.add(rightArm);
+            
+            // Sofa legs
+            const legGeometry = new THREE.BoxGeometry(0.1, 0.2, 0.1);
+            const legMaterial = new THREE.MeshStandardMaterial({ 
+                color: darkenColor(color, 60),
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            
+            const legPositions = [
+                { x: -0.9, z: 0.4 },
+                { x: 0.9, z: 0.4 },
+                { x: -0.9, z: -0.4 },
+                { x: 0.9, z: -0.4 }
+            ];
+            
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(pos.x, 0.1, pos.z);
+                leg.castShadow = true;
+                sofaGroup.add(leg);
+            });
+            
+            // Cushions
+            const cushionGeometry = new THREE.BoxGeometry(0.6, 0.2, 0.9);
+            const cushionMaterial = new THREE.MeshStandardMaterial({ 
+                color: lightenColor(color, 30),
+                roughness: 0.9,
+                metalness: 0
+            });
+            
+            const cushion1 = new THREE.Mesh(cushionGeometry, cushionMaterial);
+            cushion1.position.set(-0.6, 0.8, 0);
+            sofaGroup.add(cushion1);
+            
+            const cushion2 = new THREE.Mesh(cushionGeometry, cushionMaterial);
+            cushion2.position.set(0.6, 0.8, 0);
+            sofaGroup.add(cushion2);
+            
+            sofaGroup.userData = {
+                type: 'sofa',
+                color: color,
+                name: 'Sofa ' + furnitureCounter++
+            };
+            
+            return sofaGroup;
+        }
+        
+        function createBed(color = currentFurnitureColor, id = 'bed-' + Date.now()) {
+            const bedGroup = new THREE.Group();
+            bedGroup.name = id;
+            const bedMaterial = new THREE.MeshStandardMaterial({ 
+                color: color,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            
+            // Bed frame
+            const frameGeometry = new THREE.BoxGeometry(3, 0.5, 2.5);
+            const frame = new THREE.Mesh(frameGeometry, bedMaterial);
+            frame.position.y = 0.25;
+            frame.castShadow = true;
+            frame.receiveShadow = true;
+            bedGroup.add(frame);
+            
+            // Mattress
+            const mattressMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                roughness: 0.9,
+                metalness: 0
+            });
+            const mattressGeometry = new THREE.BoxGeometry(2.8, 0.3, 2.3);
+            const mattress = new THREE.Mesh(mattressGeometry, mattressMaterial);
+            mattress.position.y = 0.55;
+            mattress.castShadow = true;
+            bedGroup.add(mattress);
+            
+            // Pillows
+            const pillowGeometry = new THREE.BoxGeometry(0.8, 0.2, 0.6);
+            const pillowMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xf5f5f5,
+                roughness: 0.8,
+                metalness: 0
+            });
+            
+            const pillow1 = new THREE.Mesh(pillowGeometry, pillowMaterial);
+            pillow1.position.set(0.8, 0.7, 0.8);
+            pillow1.rotation.z = Math.PI / 6;
+            bedGroup.add(pillow1);
+            
+            const pillow2 = new THREE.Mesh(pillowGeometry, pillowMaterial);
+            pillow2.position.set(-0.8, 0.7, 0.8);
+            pillow2.rotation.z = -Math.PI / 6;
+            bedGroup.add(pillow2);
+            
+            // Headboard
+            const headboardGeometry = new THREE.BoxGeometry(3, 1, 0.1);
+            const headboard = new THREE.Mesh(headboardGeometry, bedMaterial);
+            headboard.position.y = 1;
+            headboard.position.z = 1.3;
+            headboard.castShadow = true;
+            bedGroup.add(headboard);
+            
+            // Footboard
+            const footboardGeometry = new THREE.BoxGeometry(3, 0.3, 0.1);
+            const footboard = new THREE.Mesh(footboardGeometry, bedMaterial);
+            footboard.position.y = 0.15;
+            footboard.position.z = -1.3;
+            footboard.castShadow = true;
+            bedGroup.add(footboard);
+            
+            bedGroup.userData = {
+                type: 'bed',
+                color: color,
+                name: 'Bed ' + furnitureCounter++
+            };
+            
+            return bedGroup;
+        }
+        
+        function createTable(color = currentFurnitureColor, id = 'table-' + Date.now()) {
+            const tableGroup = new THREE.Group();
+            tableGroup.name = id;
+            const tableMaterial = new THREE.MeshStandardMaterial({ 
+                color: color,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            
+            // Table top
+            const topGeometry = new THREE.BoxGeometry(1.5, 0.1, 1);
+            const top = new THREE.Mesh(topGeometry, tableMaterial);
+            top.position.y = 0.8;
+            top.castShadow = true;
+            top.receiveShadow = true;
+            tableGroup.add(top);
+            
+            // Table legs
+            const legGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+            const legMaterial = new THREE.MeshStandardMaterial({ 
+                color: darkenColor(color, 40),
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            
+            const legPositions = [
+                { x: 0.6, z: 0.4 },
+                { x: -0.6, z: 0.4 },
+                { x: 0.6, z: -0.4 },
+                { x: -0.6, z: -0.4 }
+            ];
+            
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(pos.x, 0.4, pos.z);
+                leg.castShadow = true;
+                tableGroup.add(leg);
+            });
+            
+            tableGroup.userData = {
+                type: 'table',
+                color: color,
+                name: 'Table ' + furnitureCounter++
+            };
+            
+            return tableGroup;
+        }
+        
+        function createLamp(color = currentFurnitureColor, id = 'lamp-' + Date.now()) {
+            const lampGroup = new THREE.Group();
+            lampGroup.name = id;
+            const baseMaterial = new THREE.MeshStandardMaterial({ 
+                color: darkenColor(color, 20),
+                roughness: 0.5,
+                metalness: 0.7
+            });
+            
+            // Lamp base
+            const baseGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
+            const base = new THREE.Mesh(baseGeometry, baseMaterial);
+            base.position.y = 0.05;
+            base.castShadow = true;
+            base.receiveShadow = true;
+            lampGroup.add(base);
+            
+            // Lamp pole
+            const poleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 32);
+            const pole = new THREE.Mesh(poleGeometry, baseMaterial);
+            pole.position.y = 0.85;
+            pole.castShadow = true;
+            lampGroup.add(pole);
+            
+            // Lamp shade
+            const shadeMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xf5f5f5,
+                roughness: 0.9,
+                metalness: 0,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const shadeGeometry = new THREE.ConeGeometry(0.5, 0.4, 32);
+            const shade = new THREE.Mesh(shadeGeometry, shadeMaterial);
+            shade.position.y = 1.5;
+            shade.rotation.x = Math.PI;
+            shade.castShadow = true;
+            lampGroup.add(shade);
+            
+            // Light source
+            const light = new THREE.PointLight(0xffffcc, 1, 3);
+            light.position.set(0, 1.3, 0);
+            light.castShadow = true;
+            light.shadow.mapSize.width = 512;
+            light.shadow.mapSize.height = 512;
+            lampGroup.add(light);
+            
+            lampGroup.userData = {
+                type: 'lamp',
+                color: color,
+                name: 'Lamp ' + furnitureCounter++,
+                light: light
+            };
+            
+            return lampGroup;
+        }
+        
+        function createBookshelf(color = currentFurnitureColor, id = 'bookshelf-' + Date.now()) {
+            const shelfGroup = new THREE.Group();
+            shelfGroup.name = id;
+            const shelfMaterial = new THREE.MeshStandardMaterial({ 
+                color: color,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            
+            // Main frame
+            const frameGeometry = new THREE.BoxGeometry(1.2, 2, 0.4);
+            const frame = new THREE.Mesh(frameGeometry, shelfMaterial);
+            frame.position.y = 1;
+            frame.castShadow = true;
+            frame.receiveShadow = true;
+            shelfGroup.add(frame);
+            
+            // Shelves
+            const shelfGeometry = new THREE.BoxGeometry(1.1, 0.05, 0.35);
+            const shelf1 = new THREE.Mesh(shelfGeometry, shelfMaterial);
+            shelf1.position.y = 0.5;
+            shelfGroup.add(shelf1);
+            
+            const shelf2 = new THREE.Mesh(shelfGeometry, shelfMaterial);
+            shelf2.position.y = 1.0;
+            shelfGroup.add(shelf2);
+            
+            const shelf3 = new THREE.Mesh(shelfGeometry, shelfMaterial);
+            shelf3.position.y = 1.5;
+            shelfGroup.add(shelf3);
+            
+            // Books (random colors)
+            const bookColors = [
+                0x8B0000, 0x00008B, 0x006400, 0x4B0082, 0xFF8C00,
+                0x9932CC, 0x008B8B, 0xB8860B, 0xA9A9A9, 0x8FBC8F
+            ];
+            
+            for (let i = 0; i < 10; i++) {
+                const bookHeight = 0.05 + Math.random() * 0.1;
+                const bookWidth = 0.15 + Math.random() * 0.2;
+                const bookDepth = 0.25 + Math.random() * 0.1;
+                
+                const bookGeometry = new THREE.BoxGeometry(bookWidth, bookHeight, bookDepth);
+                const bookMaterial = new THREE.MeshStandardMaterial({ 
+                    color: bookColors[Math.floor(Math.random() * bookColors.length)],
+                    roughness: 0.7,
+                    metalness: 0
+                });
+                
+                const book = new THREE.Mesh(bookGeometry, bookMaterial);
+                
+                // Position books on different shelves
+                let shelfY = 0;
+                if (i < 3) shelfY = 0.4;
+                else if (i < 6) shelfY = 0.9;
+                else shelfY = 1.4;
+                
+                book.position.set(
+                    -0.4 + Math.random() * 0.8,
+                    shelfY + bookHeight/2,
+                    0.1 + Math.random() * 0.1
+                );
+                
+                // Random rotation
+                book.rotation.y = (Math.random() - 0.5) * 0.2;
+                
+                book.castShadow = true;
+                shelfGroup.add(book);
+            }
+            
+            shelfGroup.userData = {
+                type: 'bookshelf',
+                color: color,
+                name: 'Bookshelf ' + furnitureCounter++
+            };
+            
+            return shelfGroup;
+        }
+        
+        function createTVStand(color = currentFurnitureColor, id = 'tvstand-' + Date.now()) {
+            const tvStandGroup = new THREE.Group();
+            tvStandGroup.name = id;
+            const standMaterial = new THREE.MeshStandardMaterial({ 
+                color: color,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            
+            // Main cabinet
+            const cabinetGeometry = new THREE.BoxGeometry(2, 0.6, 0.5);
+            const cabinet = new THREE.Mesh(cabinetGeometry, standMaterial);
+            cabinet.position.y = 0.3;
+            cabinet.castShadow = true;
+            cabinet.receiveShadow = true;
+            tvStandGroup.add(cabinet);
+            
+            // TV screen
+            const screenGeometry = new THREE.BoxGeometry(1.8, 1, 0.05);
+            const screenMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x000000,
+                roughness: 0.1,
+                metalness: 0.9,
+                emissive: 0x111111
+            });
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.y = 1.1;
+            screen.position.z = 0.275;
+            tvStandGroup.add(screen);
+            
+            // Screen content
+            const screenContentGeometry = new THREE.PlaneGeometry(1.7, 0.9);
+            const screenContentMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00AAFF,
+                emissive: 0x005588,
+                side: THREE.DoubleSide
+            });
+            const screenContent = new THREE.Mesh(screenContentGeometry, screenContentMaterial);
+            screenContent.position.y = 1.1;
+            screenContent.position.z = 0.3;
+            screenContent.rotation.y = Math.PI; // Face forward
+            tvStandGroup.add(screenContent);
+            
+            // Stand legs
+            const legGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const legMaterial = new THREE.MeshStandardMaterial({ 
+                color: darkenColor(color, 40),
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            
+            const legPositions = [
+                { x: 0.9, z: 0.2 },
+                { x: -0.9, z: 0.2 },
+                { x: 0.9, z: -0.2 },
+                { x: -0.9, z: -0.2 }
+            ];
+            
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(pos.x, 0.05, pos.z);
+                leg.castShadow = true;
+                tvStandGroup.add(leg);
+            });
+            
+            tvStandGroup.userData = {
+                type: 'tvstand',
+                color: color,
+                name: 'TV Stand ' + furnitureCounter++
+            };
+            
+            return tvStandGroup;
+        }
+        
+        // Place furniture in the room
+        function placeFurniture() {
+            const furnitureType = document.getElementById('furniture-select').value;
+            const id = furnitureType + '-' + Date.now();
+            
+            let furniture;
+            
+            switch(furnitureType) {
+                case 'chair':
+                    furniture = createChair(currentFurnitureColor, id);
+                    break;
+                case 'sofa':
+                    furniture = createSofa(currentFurnitureColor, id);
+                    break;
+                case 'bed':
+                    furniture = createBed(currentFurnitureColor, id);
+                    break;
+                case 'table':
+                    furniture = createTable(currentFurnitureColor, id);
+                    break;
+                case 'lamp':
+                    furniture = createLamp(currentFurnitureColor, id);
+                    break;
+                case 'bookshelf':
+                    furniture = createBookshelf(currentFurnitureColor, id);
+                    break;
+                case 'tv':
+                    furniture = createTVStand(currentFurnitureColor, id);
+                    break;
+            }
+            
+            // Position the furniture in the center of the room
+            furniture.position.set(0, 0, 0);
+            room.add(furniture);
+            
+            // Add to furniture list
+            furnitureItems.push({
+                id: id,
+                object: furniture,
+                name: furniture.userData.name,
+                type: furnitureType
+            });
+            
+            // Select the new furniture
+            selectFurniture(furnitureItems.length - 1);
+            
+            updateStatus(`Added ${furniture.userData.name}.`);
+            updateFurnitureList();
+        }
+        
+        // Update the furniture list in the UI
+        function updateFurnitureList() {
+            const listElement = document.getElementById('furniture-list');
+            listElement.innerHTML = '';
+            
+            furnitureItems.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = `furniture-item ${index === selectedFurnitureIndex ? 'selected' : ''}`;
+                itemElement.innerHTML = `
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-type">${item.type}</span>
+                `;
+                
+                itemElement.addEventListener('click', () => {
+                    selectFurniture(index);
+                });
+                
+                listElement.appendChild(itemElement);
+            });
+        }
+        
+        // Select furniture by index
+        function selectFurniture(index) {
+            if (index >= 0 && index < furnitureItems.length) {
+                selectedFurnitureIndex = index;
+                const selectedItem = furnitureItems[index];
+                
+                // Update selected info
+                document.getElementById('selected-info').textContent = 
+                    `${selectedItem.name} (${selectedItem.type})`;
+                
+                // Update color selector
+                const colorSelect = document.getElementById('color-select');
+                const colorHex = '0x' + selectedItem.object.userData.color.toString(16).padStart(6, '0');
+                colorSelect.value = colorHex;
+                document.getElementById('custom-furniture-color').value = '#' + selectedItem.object.userData.color.toString(16).padStart(6, '0');
+                
+                updateFurnitureList();
+                updateStatus(`Selected ${selectedItem.name}.`);
+            } else {
+                selectedFurnitureIndex = -1;
+                document.getElementById('selected-info').textContent = 'No furniture selected';
+                updateFurnitureList();
+            }
+        }
+        
+        // Remove selected furniture
+        function removeSelectedFurniture() {
+            if (selectedFurnitureIndex >= 0 && selectedFurnitureIndex < furnitureItems.length) {
+                const item = furnitureItems[selectedFurnitureIndex];
+                room.remove(item.object);
+                
+                // Remove from array
+                furnitureItems.splice(selectedFurnitureIndex, 1);
+                
+                // Select next item or clear selection
+                if (furnitureItems.length > 0) {
+                    selectFurniture(Math.min(selectedFurnitureIndex, furnitureItems.length - 1));
+                } else {
+                    selectFurniture(-1);
+                }
+                
+                updateStatus(`Removed ${item.name}.`);
+            } else {
+                updateStatus("No furniture selected to remove.");
+            }
+        }
+        
+        // Clear all furniture
+        function clearAllFurniture() {
+            furnitureItems.forEach(item => {
+                room.remove(item.object);
+            });
+            
+            furnitureItems = [];
+            selectFurniture(-1);
+            updateStatus("All furniture removed.");
+        }
+        
+        // Toggle move mode
+        function toggleMoveMode() {
+            if (selectedFurnitureIndex >= 0 && selectedFurnitureIndex < furnitureItems.length) {
+                moveMode = !moveMode;
+                document.getElementById('move-btn').textContent = 
+                    moveMode ? "Disable Move Mode" : "Enable Move Mode";
+                updateStatus(moveMode ? 
+                    `Move mode enabled. Click on floor to place ${furnitureItems[selectedFurnitureIndex].name}.` : 
+                    "Move mode disabled.");
+            } else {
+                updateStatus("Please select furniture first.");
+            }
+        }
+        
+        // Rotate selected furniture
+        function rotateSelectedFurniture() {
+            if (selectedFurnitureIndex >= 0 && selectedFurnitureIndex < furnitureItems.length) {
+                const furniture = furnitureItems[selectedFurnitureIndex].object;
+                furniture.rotation.y += Math.PI / 4; // Rotate 45 degrees
+                updateStatus(`Rotated ${furnitureItems[selectedFurnitureIndex].name}.`);
+            } else {
+                updateStatus("No furniture selected to rotate.");
+            }
+        }
+        
+        // Change selected furniture color
+        function changeSelectedFurnitureColor(colorHex) {
+            if (selectedFurnitureIndex >= 0 && selectedFurnitureIndex < furnitureItems.length) {
+                const color = parseInt(colorHex);
+                currentFurnitureColor = color;
+                const furniture = furnitureItems[selectedFurnitureIndex].object;
+                
+                // Update color in userData
+                furniture.userData.color = color;
+                
+                // Update all parts of the furniture
+                furniture.traverse(child => {
+                    if (child.isMesh) {
+                        // Skip special materials (like lamp shade, mattress, etc.)
+                        if (!child.userData.skipRecolor) {
+                            if (child.material.color) {
+                                child.material.color.setHex(color);
+                            }
+                            
+                            // Darken legs and other supporting parts
+                            if (child.userData.isSupport) {
+                                child.material.color.setHex(darkenColor(color, 40));
+                            }
+                        }
+                    }
+                });
+                
+                // Special case for lamp - update base color (shade is handled by skipRecolor)
+                if (furniture.userData.type === 'lamp') {
+                    furniture.children.forEach(child => {
+                        if (child.isMesh && !child.userData.skipRecolor) {
+                            child.material.color.setHex(darkenColor(color, 20));
+                        }
+                    });
+                }
+                
+                updateStatus(`Changed color of ${furnitureItems[selectedFurnitureIndex].name}.`);
+            } else {
+                updateStatus("No furniture selected to change color.");
+            }
+        }
+        
+        // Handle custom furniture color picker
+        function customFurnitureColorChange() {
+            const color = document.getElementById('custom-furniture-color').value;
+            const colorHex = '0x' + color.substring(1);
+            document.getElementById('color-select').value = colorHex;
+            changeSelectedFurnitureColor(colorHex);
+        }
+        
+        // Change wall color
+        function changeWallColor(color) {
+            backWall.material.color.setHex(color);
+            leftWall.material.color.setHex(darkenColor(color, 20));
+            rightWall.material.color.setHex(darkenColor(color, 40));
+            updateStatus("Changed wall color.");
+        }
+        
+        // Change floor color
+        function changeFloorColor(color) {
+            floor.material.color.setHex(color);
+            updateStatus("Changed floor color.");
+        }
+        
+        // Handle custom color picker
+        function customColorChange() {
+            const color = document.getElementById('custom-color').value;
+            changeWallColor(parseInt(color.substring(1), 16));
+        }
+        
+        // Helper function to darken a color
+        function darkenColor(color, amount) {
+            const r = Math.max(0, ((color >> 16) & 0xFF) - amount);
+            const g = Math.max(0, ((color >> 8) & 0xFF) - amount);
+            const b = Math.max(0, (color & 0xFF) - amount);
+            return (r << 16) | (g << 8) | b;
+        }
+        
+        // Helper function to lighten a color
+        function lightenColor(color, amount) {
+            const r = Math.min(255, ((color >> 16) & 0xFF) + amount);
+            const g = Math.min(255, ((color >> 8) & 0xFF) + amount);
+            const b = Math.min(255, (color & 0xFF) + amount);
+            return (r << 16) | (g << 8) | b;
+        }
+        
+        // Helper function to capitalize first letter
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+        
+        // Update status message
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+        
+        // Raycasting for furniture placement
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        function onMouseClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Update the raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            if (moveMode && selectedFurnitureIndex >= 0 && selectedFurnitureIndex < furnitureItems.length) {
+                // In move mode - position selected furniture
+                const intersects = raycaster.intersectObject(floor);
+                
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    const furniture = furnitureItems[selectedFurnitureIndex].object;
+                    
+                    // Adjust y position based on furniture type
+                    let yPos = 0;
+                    if (furniture.userData.type === 'lamp') {
+                        yPos = 0;
+                    } else if (furniture.userData.type === 'bed') {
+                        yPos = 0.25;
+                    } else if (furniture.userData.type === 'table') {
+                        yPos = 0;
+                    } else if (furniture.userData.type === 'chair') {
+                        yPos = 0;
+                    } else if (furniture.userData.type === 'sofa') {
+                        yPos = 0;
+                    } else if (furniture.userData.type === 'bookshelf') {
+                        yPos = 0;
+                    } else if (furniture.userData.type === 'tvstand') {
+                        yPos = 0;
+                    }
+                    
+                    furniture.position.set(point.x, yPos, point.z);
+                    updateStatus(`Moved ${furnitureItems[selectedFurnitureIndex].name} to new position.`);
+                }
+            } else {
+                // Not in move mode - check if clicking on furniture to select it
+                const intersects = raycaster.intersectObjects(
+                    furnitureItems.map(item => item.object), 
+                    true // Check child objects too
+                );
+                
+                if (intersects.length > 0) {
+                    // Find which furniture item was clicked
+                    let clickedFurniture = null;
+                    let obj = intersects[0].object;
+                    
+                    while (obj && obj !== scene) {
+                        const furnitureItem = furnitureItems.find(item => item.object === obj || obj.parent === item.object);
+                        if (furnitureItem) {
+                            clickedFurniture = furnitureItem;
+                            break;
+                        }
+                        obj = obj.parent;
+                    }
+                    
+                    if (clickedFurniture) {
+                        const index = furnitureItems.findIndex(item => item.id === clickedFurniture.id);
+                        selectFurniture(index);
+                    }
+                }
+            }
+        }
+        
+        // Event listeners
+        window.addEventListener('click', onMouseClick, false);
+        window.addEventListener('resize', onWindowResize, false);
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Initial status
+        updateStatus("Welcome to 3D Room Builder! Add furniture to begin.");
+    </script>
+</body>
+</html>
