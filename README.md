@@ -20,4 +20,4 @@ An interactive 3D room designer built with Three.js that lets users:
 ## Setup
 1. Clone repo:
    ```bash
-   git clone https://github.com/yourusername/3D-Room-Builder.git
+   git clone https://github.com/aditiids/3D-Room-Builder.git
